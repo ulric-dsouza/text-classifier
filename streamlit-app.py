@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score
 
-def preprocess_text(text):   
+def preprocess_text(text):
 
     # Remove extraneous words and perform other preprocessing steps
     # Replace with your specific preprocessing logic
