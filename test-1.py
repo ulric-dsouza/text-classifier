@@ -12,6 +12,8 @@ import requests
 # Set your Gemini API key
 api_key = "AIzaSyC8FSRI4MaX6hOrnwVDNNK0wcLHP_048-g"
 
+import re
+
 def preprocess_text(text):
     # Convert to lowercase
     text = text.lower()
