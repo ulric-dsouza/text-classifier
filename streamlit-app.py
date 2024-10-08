@@ -1,26 +1,35 @@
 import streamlit as st
 import pandas as pd
-from gemini_client import GeminiClient
+from google.cloud import aiplatform
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score
 
 def preprocess_text(text):
-
     # Remove extraneous words and perform other preprocessing steps
     # Replace with your specific preprocessing logic
     return text
 
 def generate_embeddings(texts):
-    # Initialize Gemini client
-    client = GeminiClient()
+    # Create an Aiplatform client
+    client = aiplatform.Client()
+
+    # Specify the embedding model (e.g., "text-embedding-004")
+    model_name = "text-embedding-004"
+
+    # Create an Endpoint instance
+    endpoint = client.endpoint.create(
+        display_name="My Embedding Endpoint",
+        model_name=model_name,
+    )
 
     # Generate embeddings
-    embeddings = []
-    for text in texts:
-        embedding = client.generate_embeddings(text)
-        embeddings.append(embedding)
+    embeddings = endpoint.predict(
+        instances=[
+            {"text": text} for text in texts
+        ]
+    )
 
     return embeddings
 
@@ -62,7 +71,6 @@ def main():
             df = pd.read_csv(uploaded_file)
         elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
             df = pd.read_excel(uploaded_file)
-
         else:
             st.error("Invalid file format. Please upload a CSV or XLSX file.")
             return
