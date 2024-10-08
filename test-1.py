@@ -15,7 +15,8 @@ def get_gemini_embeddings(text):
         'Authorization': f'Bearer {GEMINI_API_KEY}',
         'Content-Type': 'application/json'
     }
-    # Replace with the actual Gemini API endpoint for generating embeddings
+    
+    # Replace this with the correct endpoint from Gemini API documentation
     url = "https://api.gemini.com/v1/embeddings"
     
     # Prepare payload
@@ -24,11 +25,13 @@ def get_gemini_embeddings(text):
     # Make API request
     response = requests.post(url, headers=headers, json=data)
     
+    # Log full response for debugging
     if response.status_code == 200:
         embedding = response.json().get("embedding")
         return embedding
     else:
-        st.error("Failed to get embeddings from Gemini API.")
+        st.error(f"Failed to get embeddings from Gemini API. Status code: {response.status_code}")
+        st.write("Response content:", response.text)  # To see the full error message
         return None
 
 # Function to clean text data (remove extraneous words)
