@@ -26,15 +26,21 @@ def preprocess_text(text):
     text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
 
     return text
-
+    
 def get_gemini_embeddings(text):
     url = "https://api.gemini.com/embeddings"
     headers = {"Authorization": f"Bearer {api_key}"}
     data = {"text": text}
     response = requests.post(url, headers=headers, json=data)
-    embeddings = response.json()["embeddings"]
-    return embeddings
 
+    try:
+        embeddings = response.json()["embeddings"]
+        return embeddings
+    except KeyError:
+        # Handle missing "embeddings" key (e.g., log a warning, return an empty list)
+        st.warning("Gemini API response might not contain embeddings.")
+        return []  # Or handle it differently based on your needs
+        
 def train_classifier(X_train, y_train):
     # Create a TF-IDF vectorizer
     vectorizer = TfidfVectorizer()
