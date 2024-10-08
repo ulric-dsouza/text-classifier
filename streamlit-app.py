@@ -64,8 +64,7 @@ def main():
             df = pd.read_excel(uploaded_file)
 
         else:
-            st.error("Invalid   
- file format. Please upload a CSV or XLSX file.")
+            st.error("Invalid file format. Please upload a CSV or XLSX file.")
             return
 
         # Extract text data
