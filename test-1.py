@@ -1,109 +1,100 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import requests
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
-import nltk
-import re
+import requests
 
-# Download nltk data
-nltk.download('stopwords')
-from nltk.corpus import stopwords
+# Set API key
+GEMINI_API_KEY = 'AIzaSyC8FSRI4MaX6hOrnwVDNNK0wcLHP_048-g'
 
-# Set up Streamlit app
+# Function to generate embeddings using Gemini API
+def get_gemini_embeddings(text):
+    headers = {
+        'Authorization': f'Bearer {GEMINI_API_KEY}',
+        'Content-Type': 'application/json'
+    }
+    # Replace with the actual Gemini API endpoint for generating embeddings
+    url = "https://api.gemini.com/v1/embeddings"
+    
+    # Prepare payload
+    data = {"text": text}
+    
+    # Make API request
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code == 200:
+        embedding = response.json().get("embedding")
+        return embedding
+    else:
+        st.error("Failed to get embeddings from Gemini API.")
+        return None
+
+# Function to clean text data (remove extraneous words)
+def preprocess_text(text):
+    # Here we can add functions like removing stop words, punctuation, etc.
+    return text.lower()
+
+# Streamlit App Layout
 st.title("Text Classifier Using Gemini GenAI Embeddings")
 
-# Input for Gemini API key
-gemini_api_key = st.text_input("Enter your Gemini API Key", type="password")
+# Step 1: File upload
+uploaded_file = st.file_uploader("Upload your CSV or Excel file", type=["csv", "xlsx"])
 
-# File uploader
-uploaded_file = st.file_uploader("Upload your CSV or XLSX file", type=["csv", "xlsx"])
-
-if uploaded_file is not None and gemini_api_key:
-    # Read the file
-    try:
-        if uploaded_file.name.endswith('.csv'):
-            data = pd.read_csv(uploaded_file)
-        else:
-            data = pd.read_excel(uploaded_file)
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
-        st.stop()
-
-    # Check if data has at least two columns
-    if len(data.columns) < 2:
-        st.error("The data file must have at least two columns: 'Text' and 'Label'")
-        st.stop()
+if uploaded_file is not None:
+    # Step 2: Read the file
+    if uploaded_file.name.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
     
-    # Assuming first column is 'Text' and second column is 'Label'
-    data.columns = ['Text', 'Label']
+    # Display uploaded data
+    st.write("Uploaded Data:", df.head())
+    
+    # Check for the required column
+    if len(df.columns) != 1:
+        st.error("The uploaded file should contain only one column.")
+    else:
+        column_name = df.columns[0]
+        
+        # Step 3: Preprocess text data
+        st.write("Preprocessing text data...")
+        df[column_name] = df[column_name].apply(preprocess_text)
+        
+        # Step 4: Generate embeddings using Gemini API
+        st.write("Generating embeddings...")
+        embeddings = []
+        for text in df[column_name]:
+            embedding = get_gemini_embeddings(text)
+            if embedding:
+                embeddings.append(embedding)
+        
+        if len(embeddings) == len(df):
+            # Step 5: Create a dummy classification label for demo purposes (can be modified)
+            df['category'] = df.index % 2  # Assigning labels for example purposes
 
-    # Preprocessing function
-    def preprocess_text(text):
-        # Lowercase
-        text = text.lower()
-        # Remove punctuation and numbers
-        text = re.sub(r'[^a-zA-Z\s]', '', text)
-        # Remove stopwords
-        stop_words = set(stopwords.words('english'))
-        text_tokens = text.split()
-        filtered_text = [word for word in text_tokens if word not in stop_words]
-        return ' '.join(filtered_text)
+            # Encoding labels
+            le = LabelEncoder()
+            df['category'] = le.fit_transform(df['category'])
 
-    # Preprocess the text data
-    data['Processed_Text'] = data['Text'].apply(preprocess_text)
+            # Train/test split
+            X_train, X_test, y_train, y_test = train_test_split(embeddings, df['category'], test_size=0.2, random_state=42)
 
-    # Generate embeddings using Gemini API
-    def get_embedding(text, api_key):
-        url = 'https://api.gemini.com/embeddings'
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json'
-        }
-        payload = {
-            'text': text
-        }
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            embedding = response.json().get('embedding')
-            return embedding
+            # Step 6: Build a simple classification model (Logistic Regression)
+            clf = LogisticRegression()
+            clf.fit(X_train, y_train)
+            
+            # Predict on the test set
+            y_pred = clf.predict(X_test)
+
+            # Step 7: Show accuracy and predicted categories
+            accuracy = accuracy_score(y_test, y_pred)
+            st.write(f"Model Accuracy: {accuracy * 100:.2f}%")
+            
+            # Assign categories for new inputs
+            st.write("Predicted categories for the test set:")
+            st.write(pd.DataFrame({'Text': df[column_name].iloc[X_test.index], 'Predicted Category': y_pred}))
+
         else:
-            st.error(f"Error from Gemini API: {response.text}")
-            return None
-
-    # Generate embeddings
-    st.info("Generating embeddings, please wait...")
-    embeddings = []
-    for idx, row in data.iterrows():
-        embedding = get_embedding(row['Processed_Text'], gemini_api_key)
-        if embedding is not None:
-            embeddings.append(embedding)
-        else:
-            st.error("Failed to get embedding.")
-            st.stop()
-
-    # Convert embeddings to numpy array
-    X = np.array(embeddings)
-    y = data['Label']
-
-    # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Build a simple classification model
-    model = LogisticRegression()
-    model.fit(X_train, y_train)
-
-    # Predict and compute accuracy
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-
-    st.success(f"Model Accuracy: {accuracy * 100:.2f}%")
-
-    # Show the assigned categories
-    st.write("Assigned Categories:")
-    result_df = pd.DataFrame({'Text': data['Text'], 'Assigned_Category': model.predict(X)})
-    st.dataframe(result_df)
-else:
-    st.warning("Please upload a data file and enter your Gemini API Key.")
+            st.error("Embedding generation failed for some texts.")
