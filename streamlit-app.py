@@ -61,7 +61,7 @@ def main():
         if uploaded_file.type == "text/csv":
             df = pd.read_csv(uploaded_file)
         elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            df = pd.read_excel(uploaded_file)   
+            df = pd.read_excel(uploaded_file)
 
         else:
             st.error("Invalid   
